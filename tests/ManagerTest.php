@@ -11,6 +11,8 @@
 
 namespace Tymon\JWTAuth\Test;
 
+
+use Illuminate\Contracts\Encryption\Encrypter;
 use Mockery;
 use Tymon\JWTAuth\Blacklist;
 use Tymon\JWTAuth\Claims\Collection;
@@ -55,10 +57,16 @@ class ManagerTest extends AbstractTestCase
      * @var \Mockery\MockInterface
      */
     protected $validator;
+    /**
+     * @var Encrypter|Mockery\LegacyMockInterface|Mockery\MockInterface
+     */
+    protected $encrypter;
 
     public function setUp(): void
     {
         parent::setUp();
+
+        $this->encrypter = Mockery::mock(Encrypter::class);
 
         $this->jwt = Mockery::mock(JWT::class);
         $this->blacklist = Mockery::mock(Blacklist::class);
@@ -87,6 +95,8 @@ class ManagerTest extends AbstractTestCase
         $this->jwt->shouldReceive('encode')->with($payload->toArray())->andReturn('foo.bar.baz');
 
         $token = $this->manager->encode($payload);
+        $this->encrypter->shouldReceive('encryptString')->times(1)->andReturn('foo.bar.baz');
+        $this->encrypter->shouldReceive('decryptString')->times(1)->andReturn('foo.bar.baz');
 
         $this->assertEquals($token, 'foo.bar.baz');
     }

@@ -11,6 +11,8 @@
 
 namespace Tymon\JWTAuth;
 
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
 use Tymon\JWTAuth\Contracts\Providers\JWT as JWTContract;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
@@ -81,7 +83,7 @@ class Manager
      */
     public function encode(Payload $payload)
     {
-        $token = $this->provider->encode($payload->get());
+        $token = Crypt::encryptString($this->provider->encode($payload->get()));
 
         return new Token($token);
     }
@@ -98,7 +100,13 @@ class Manager
      */
     public function decode(Token $token, $checkBlacklist = true)
     {
-        $payloadArray = $this->provider->decode($token->get());
+        try {
+            $decrypted = Crypt::decryptString($token->get());
+        } catch (DecryptException $e) {
+            throw new TokenBlacklistedException($e->getMessage());
+        }
+
+        $payloadArray = $this->provider->decode($decrypted);
 
         $payload = $this->payloadFactory
                         ->setRefreshFlow($this->refreshFlow)
