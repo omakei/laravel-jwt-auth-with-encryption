@@ -11,6 +11,9 @@
 
 namespace Tymon\JWTAuth\Validators;
 
+use Illuminate\Contracts\Encryption\DecryptException;
+use Illuminate\Support\Facades\Crypt;
+use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 
 class TokenValidator extends Validator
@@ -36,7 +39,13 @@ class TokenValidator extends Validator
      */
     protected function validateStructure($token)
     {
-        $parts = explode('.', $token);
+        try {
+            $decrypted = Crypt::decryptString($token);
+        } catch (DecryptException $e) {
+            throw new TokenBlacklistedException($e->getMessage());
+        }
+
+        $parts = explode('.', $decrypted);
 
         if (count($parts) !== 3) {
             throw new TokenInvalidException('Wrong number of segments');
@@ -44,7 +53,7 @@ class TokenValidator extends Validator
 
         $parts = array_filter(array_map('trim', $parts));
 
-        if (count($parts) !== 3 || implode('.', $parts) !== $token) {
+        if (count($parts) !== 3 || implode('.', $parts) !== $decrypted) {
             throw new TokenInvalidException('Malformed token');
         }
 
